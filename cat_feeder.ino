@@ -20,7 +20,7 @@ void setup()
 {
   Serial.begin(115200);
 
-  // TODO: connect to WiFi the flexible way
+  // TODO: connect to WiFi the flexible way (https://github.com/tzapu/WiFiManager)
   WiFi.begin(ssid, password);
 
   Serial.println("Wifi started");
