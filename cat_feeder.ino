@@ -8,7 +8,7 @@
 const char* ssid     = "Bluffs_Resident";
 const char* password = "bluffsresident";
 
-const char* host = "time.nist.gov";
+const char* host = "";
 const int port = 13;
 
 float weight_queue[QUEUE_SIZE];
