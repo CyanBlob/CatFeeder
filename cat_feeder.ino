@@ -8,17 +8,20 @@
 const char* ssid     = "Bluffs_Resident";
 const char* password = "bluffsresident";
 
-const char* host = "";
-const int port = 13;
+const char* URI = "/update?api_key=";
+const char* API_KEY = "UFJUS014IUJ48JRB";
+const char* TAIL = "&field1=";
 
-float weight_queue[QUEUE_SIZE];
-int queued = 0;
+const char* host = "api.thingspeak.com";
+const int port = 80;
 
 WiFiClient client;
 
 void setup() 
 {
   Serial.begin(115200);
+
+  randomSeed(1);
 
   // TODO: connect to WiFi the flexible way (https://github.com/tzapu/WiFiManager)
   WiFi.begin(ssid, password);
@@ -39,14 +42,59 @@ String get_timestamp()
   return "";
 }
 
-bool post_data(float weight[])
+// publish single datapoint to ThingSpeak
+bool upload(float weight)
 {
-  return false;
+  if (!client.connect(host, port))
+  {
+      Serial.println("Failed to connect to host");
+      return false;
+  }
+
+  // sprintf for floats hasn't been implemented on Arduino -_-
+  /*char buf[10];
+  sprintf(buf, "%f", weight);
+  Serial.println(buf);*/
+
+  Serial.println(String(weight, 2));
+
+  // API call to upload weight
+  client.print(String("GET ") + URI + API_KEY + TAIL + String(weight, 2) + " HTTP/1.1\r\n" +
+               "Host: " + host + "\r\n" +
+               "Connection: close\r\n\r\n");
+  delay(100);
+  while (client.available())
+  {
+      String line = client.readStringUntil('\r');
+      //Serial.println("RESPONSE: ");
+      //Serial.println(line);
+  }
+  return true;
+}
+
+// upload all queued data
+bool post_data(float weight[], int& queued)
+{
+  while (queued > 0)
+  {
+    Serial.print("UPLOADING VALUE: ");
+    Serial.println(queued);
+    if (upload(weight[queued - 1]))
+    {
+      --queued;
+    }
+    else
+    {
+      Serial.println("Upload failed");
+      return false;
+    }
+  }
+  return true;
 }
 
 float read_weight()
 {
-  return 0.0f;
+  return random(10);
 }
 
 // if the server is telling us to dispense
@@ -61,11 +109,18 @@ void dispense()
 
 void loop() 
 {
-  weight_queue[queued++] = read_weight();
-  if (weight_queue[queued - 1] < MIN_WEIGHT || check_dispense())
+  float weight_queue[QUEUE_SIZE];
+  int queued = 0;
+
+  while (true)
   {
-    dispense();
+    weight_queue[queued++] = read_weight();
+    if (weight_queue[queued - 1] < MIN_WEIGHT || check_dispense())
+    {
+      dispense();
+    }
+    post_data(weight_queue, queued);
+    // TODO: Subtract upload time from delay time
+    delay(DELAY_TIME);
   }
-  post_data(weight_queue);
-  delay(DELAY_TIME);
 }
